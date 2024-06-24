@@ -5,7 +5,10 @@ const cors = require('cors');
 const app = express();
 const port = 5000;
 
-app.use(express.json());
+app.use(express.json({
+  origin: ['http://localhost:5173'],
+  credentials: true
+}));
 app.use(cors());
 
 const uri = process.env.DATABASE_URI;
@@ -38,6 +41,15 @@ async function run() {
         res.status(500).json({ error: 'Internal Server Error' });
       }
     });
+    app.get('/tasks-archive', async (req, res) => {
+      try {
+        const tasks = await tasksCollection.find({ status: 'archive' }).toArray();
+        res.json(tasks);
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
 
     app.post('/tasks', async (req, res) => {
       const newTask = req.body;
@@ -53,10 +65,9 @@ async function run() {
 
     app.delete('/tasks/:id', async (req, res) => {
       const taskId = req.params.id;
-
       try {
         const result = await tasksCollection.deleteOne({
-          _id: ObjectId(taskId),
+          _id: new ObjectId(taskId),
         });
         if (result.deletedCount === 0) {
           res.status(404).json({ error: 'Task not found' });
@@ -69,7 +80,7 @@ async function run() {
       }
     });
 
-    app.patch('/tasks/:id', async (req, res) => {
+    app.put('/tasks/:id', async (req, res) => {
       const taskId = req.params.id;
       const updatedTaskData = req.body;
 
